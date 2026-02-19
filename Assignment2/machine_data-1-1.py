@@ -15,6 +15,14 @@ dfa = grpByManu.get_group('A')
 dfb = grpByManu.get_group('B')
 dfc = grpByManu.get_group('c')
 
+print("\n--- Range per manufacturer ---")
+for name, d in [("A", dfa), ("B", dfb), ("C", dfc)]:
+    print(
+        f"{name}: "
+        f"load min={d['load'].min():.3f}, max={d['load'].max():.3f} | "
+        f"time min={d['time'].min():.3f}, max={d['time'].max():.3f}"
+    )
+
 loada = dfa['load']
 timea = dfa['time']
 
@@ -23,6 +31,11 @@ timeb = dfb['time']
 
 loadc = dfc['load']
 timec = dfc['time']
+
+print("\n--- Median load per manufacturer ---")
+print("A:", dfa["load"].median())
+print("B:", dfb["load"].median())
+print("C:", dfc["load"].median())
 
 plt.figure()
 plt.scatter(loada, timea, label='A', s=10)
