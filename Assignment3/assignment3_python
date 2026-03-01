@@ -1,0 +1,114 @@
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from sklearn.model_selection import cross_val_score
+from sklearn.svm import SVC
+
+
+#Readfile
+df1 = pd.read_csv("Trail1_extracted_features_acceleration_m1ai1-1-1.csv")
+df2 = pd.read_csv("Trail2_extracted_features_acceleration_m1ai1-2.csv")
+df3 = pd.read_csv("Trail3_extracted_features_acceleration_m2ai0-2.csv")
+
+#Controll
+print("Trail1 shape:", df1.shape)
+print("Trail2 shape:", df2.shape)
+print("Trail3 shape:", df3.shape)
+
+print("\nColumns Trail1:\n", df1.columns)
+print("\nFirst rows Trail1:\n", df1.head())
+
+#All to one dataset
+df = pd.concat([df1, df2, df3], ignore_index=True)
+print("\nCombined shape:", df.shape)
+print("\nCombined columns:\n", df.columns)
+print("\nMissing values per column:\n", df.isna().sum())
+
+#Convert event to binary
+print("\nEvent values BEFORE:", df["event"].unique())
+
+df["event"] = df["event"].astype(str).str.strip().str.lower()
+df["event_binary"] = (df["event"] != "normal").astype(int)
+
+print("Event_binary values AFTER:", df["event_binary"].unique())
+print(df[["event", "event_binary"]].head(10))
+print("Counts:\n", df["event_binary"].value_counts())
+
+#Drop columns we do not use
+drop_cols = ["event", "start_time", "cluster", "tsne_1", "tsne_2"]
+drop_cols = [c for c in drop_cols if c in df.columns]
+
+df_clean = df.drop(columns=drop_cols).copy()
+
+print("\nDropped columns:", drop_cols)
+print("Remaining columns:", df_clean.columns.tolist())
+print("Missing values after drop:\n", df_clean.isna().sum())
+
+#Build X and y (target)
+y = df_clean["event_binary"]
+X = df_clean.drop(columns=["event_binary"])
+X = pd.get_dummies(X, columns=["axle"], drop_first=True)
+
+print("\nX shape:", X.shape)
+print("y shape:", y.shape)
+print("X columns:\n", X.columns)
+print("\ny distribution:\n", y.value_counts())
+
+#Scale features
+scaler = MinMaxScaler()
+X_scaled = scaler.fit_transform(X)
+
+print("\nScaled X shape:", X_scaled.shape)
+print("First row after scaling:\n", X_scaled[0])
+
+#Train test split
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=42, stratify=y
+)
+
+print("\nTrain shape:", X_train.shape, "Test shape:", X_test.shape)
+print("y_train distribution:\n", y_train.value_counts())
+print("y_test distribution:\n", y_test.value_counts())
+
+#Train Random Forest model
+rf = RandomForestClassifier(n_estimators=100, random_state=42)
+rf.fit(X_train, y_train)
+
+print("\nModel trained successfully!")
+
+#Predict on test set
+y_pred = rf.predict(X_test)
+
+#Metrics
+acc = accuracy_score(y_test, y_pred)
+cm = confusion_matrix(y_test, y_pred)
+
+print("\nAccuracy:", acc)
+print("\nConfusion Matrix:\n", cm)
+print("\nClassification Report:\n", classification_report(y_test, y_pred))
+
+#5-Fold Cross Validation
+cv_scores = cross_val_score(rf, X_scaled, y, cv=5)
+
+print("\nCross-validation scores:", cv_scores)
+print("Mean CV Accuracy:", cv_scores.mean())
+
+#SVM Linear
+svm_linear = SVC(kernel="linear", random_state=42)
+svm_linear.fit(X_train, y_train)
+y_pred_lin = svm_linear.predict(X_test)
+acc_lin = accuracy_score(y_test, y_pred_lin)
+
+print("\nSVM (Linear) Accuracy:", acc_lin)
+print("SVM (Linear) Confusion Matrix:\n", confusion_matrix(y_test, y_pred_lin))
+
+#SVM RBF
+svm_rbf = SVC(kernel="rbf", random_state=42)
+svm_rbf.fit(X_train, y_train)
+y_pred_rbf = svm_rbf.predict(X_test)
+acc_rbf = accuracy_score(y_test, y_pred_rbf)
+
+print("\nSVM (RBF) Accuracy:", acc_rbf)
+print("SVM (RBF) Confusion Matrix:\n", confusion_matrix(y_test, y_pred_rbf))
